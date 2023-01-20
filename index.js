@@ -92,7 +92,7 @@ app.post("/login", async (req, res) => {
   }
 });
 
-//sent msg to register email id
+//forgot password
 app.post("/forgot", async (req, res) => {
   try {
     const connection = await mongoclient.connect(URL);
@@ -118,7 +118,7 @@ app.post("/forgot", async (req, res) => {
       to: user.email,
       subject: "Rest Password",
       text: "Hi Raj",
-      html: `<h1>Hiii ${user.email} <a href="${FD}/reset/${user._id}">please click the link and reset your password</a> </h1>`,
+      html: `<h1>Hiii ${user.email}<br/> <a href="${FD}/reset/${user._id}">please click the link and reset your password</a> </h1>`,
     };
     transporter.sendMail(mailOptions, function (error, response) {
       if (error) {
@@ -157,6 +157,7 @@ app.post("/reset/:userId", async (req, res) => {
   }
 });
 
+//get user
 app.get("/user/:userId", async (req, res) => {
   try {
     const connection = await mongoclient.connect(URL);
@@ -165,6 +166,8 @@ app.get("/user/:userId", async (req, res) => {
       .collection("users")
       .find({ _id: mongodb.ObjectId(req.params.userId) })
       .toArray();
+  delete user[0].password;
+  delete user[0]._id;
     await connection.close();
     res.json(user);
   } catch (error) {
@@ -207,6 +210,9 @@ app.delete("/deleteuser/:userId", async (req, res) => {
   }
 });
 
+
+
+
 //workSpace
 app.post("/workspace", authorize, async (req, res) => {
   try {
@@ -225,16 +231,33 @@ app.get("/workspace/:userId", authorize, async (req, res) => {
   try {
     const connection = await mongoclient.connect(URL);
     const db = connection.db("polymer_search_clone");
-    const workSpace = await db
+    const workspace = await db
       .collection("work-space")
       .find({ user_id: req.params.userId })
       .toArray();
     await connection.close();
-    res.json(workSpace);
+    res.status(201).json({ message: "get workspace successfully",workspace});
   } catch (error) {
     res.status(500).json({ message: "Something went wrong for get user" });
   }
 });
+
+//workSpace Delete
+app.delete("/deleteworkspace/:workspaceId", async (req, res) => {
+  try {
+    const connection = await mongoclient.connect(URL);
+    const db = connection.db("polymer_search_clone");
+
+    await db
+      .collection("work-space")
+      .deleteOne({ _id: mongodb.ObjectId(req.params.workspaceId) });
+    await connection.close();
+    res.json({ message: "Work Space delete successfully" });
+  } catch (error) {
+    res.status(400).json({ message: "Something went wrong" });
+  }
+});
+
 
 //upload post
 app.post("/upload", authorize, async (req, res) => {
@@ -252,26 +275,13 @@ app.post("/upload", authorize, async (req, res) => {
 });
 
 //upload get all sourece
-app.get("/upload/:userId",authorize, async (req, res) => {
+app.get("/upload/:workspaceId",authorize, async (req, res) => {
   try {
     const connection = await mongoclient.connect(URL);
     const db = connection.db("polymer_search_clone");
     const xlxsdata = await db
       .collection("upload")
-      .find({ user_id: (req.params.userId) })
-      // .aggregate([
-      //   {
-      //     $match: {
-      //       user_id: req.params.userId,
-      //     },
-      //   },
-      //   {
-      //     $project: {
-      //       source: 1,
-      //       _id: 0,
-      //     },
-      //   },
-      // ])
+      .find({ workSpace_id : (req.params.workspaceId) })
       .toArray();
     await connection.close();
     res.json(xlxsdata);
